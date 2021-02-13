@@ -4,10 +4,10 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 
-dataFile = "dataSet/Test/Set11_mat/fingerprint.mat"  # 单个的mat文件
+dataFile = "dataSet/Test/Set5_mat/butterfly.mat"  # 单个的mat文件
 data = scio.loadmat(dataFile)
 print(data.keys())
-# print(data['im_gt_y'])
+print(type(data['im_gt_y']))
 # 由于导入的mat文件是structure类型的，所以需要取出需要的数据矩阵
 a = data['im_l_y']
 

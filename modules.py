@@ -71,21 +71,21 @@ class csPart(nn.Module):
     def __init__(self, blocksize=32, subrate=0.2, channel=1):
         super(csPart, self).__init__()
         # sampling
-        self.sampling = Conv2d_Q(
-            in_channels=channel,
-            out_channels=int(np.round(blocksize * blocksize * subrate * channel)),
-            kernel_size=blocksize,
-            stride=blocksize,
-            padding=0,
-            bias=False,
-            W=2)
-        # self.sampling = nn.Conv2d(
+        # self.sampling = Conv2d_Q(
         #     in_channels=channel,
         #     out_channels=int(np.round(blocksize * blocksize * subrate * channel)),
         #     kernel_size=blocksize,
         #     stride=blocksize,
         #     padding=0,
-        #     bias=False,)
+        #     bias=False,
+        #     W=2)
+        self.sampling = nn.Conv2d(
+            in_channels=channel,
+            out_channels=int(np.round(blocksize * blocksize * subrate * channel)),
+            kernel_size=blocksize,
+            stride=blocksize,
+            padding=0,
+            bias=False,)
 
         self.gamma = nn.Parameter(torch.zeros(1))
         # self.atten = SELayer(channel=int(np.round(blocksize*blocksize*subrate*channel), reduction=16))

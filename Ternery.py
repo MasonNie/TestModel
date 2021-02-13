@@ -1,7 +1,17 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Function
+from torch.autograd import Function, Variable
+
+
+def to_var(x, requires_grad=False, volatile=False):
+    """
+    Varialbe type that automatically choose cpu or cuda
+    """
+    if torch.cuda.is_available():
+        x = x.cuda()
+    return Variable(x, requires_grad=requires_grad, volatile=volatile)
 
 
 # ********************* 二值(+-1) ***********************
@@ -102,6 +112,7 @@ class weight_tnn_bin(nn.Module):
     def __init__(self, W):
         super().__init__()
         self.W = W
+        self.mask_flag = False
 
     def binary(self, input):
         output = Binary_w.apply(input)
@@ -111,17 +122,53 @@ class weight_tnn_bin(nn.Module):
         output = Ternary.apply(input)
         return output
 
+    def cal_mask_ternary(self, weights, rate=70):  # 暂时未使用
+        mask = []
+        origin_weights = list(weights.cpu().data.abs().numpy().flatten())  #
+        if len(origin_weights) != len(origin_weights):
+            print("维度不匹配不予剪枝")
+            return torch.ones(weights.size())
+        threshold_weight = np.percentile(np.array(origin_weights), rate)
+        data_len = len(origin_weights)
+        count = 0
+        for i in range(data_len):
+            prun_val = 1
+            if origin_weights[i] < threshold_weight and self.atten_mask[i] == 1:
+                prun_val = 0
+                count += 1
+            mask.append(prun_val)
+        # print("true cut rate:", count / data_len)
+        mask = torch.tensor(mask)
+        mask = to_var(mask)  # Variable(mask, requires_grad=False, volatile=False)
+        mask = mask.view(weights.size())
+        return mask
+
+    def set_atten_mask(self, mask):
+        self.atten_mask = mask
+        # self.mask = self.cal_mask_ternary(output, 50)
+        # self.weight.data = self.weight.data * self.mask.data
+        self.mask_flag = True
+
+    def set_mask(self, mask):
+        self.mask = mask
+        self.mask_flag = True
+
     def forward(self, input):
         if self.W == 2 or self.W == 3:
             # **************************************** W二值 *****************************************
             if self.W == 2:
                 output = meancenter_clampConvParams(input)  # W中心化+截断
+                # output = input
                 # **************** channel级 - E(|W|) ****************
                 E = torch.mean(torch.abs(output), (3, 2, 1), keepdim=True)
                 # **************** α(缩放因子) ****************
                 alpha = E
                 # ************** W —— +-1 **************
-                output = self.binary(output)
+                if hasattr(self, "mask_flag") and self.mask_flag:
+                    # self.mask = self.cal_mask_ternary(output, 50)
+                    # print("output device:",output.device,"mask device:",mask.device)
+                    output = output * self.mask
+                output = self.binary(output)  # 加个if判断有没有flag
                 # ************** W * α **************
                 output = output * alpha  # 若不需要α(缩放因子)，注释掉即可
                 # **************************************** W三值 *****************************************
@@ -158,7 +205,7 @@ class Conv2d_Q(nn.Conv2d):
             groups=1,
             bias=False,
             A=2,
-            W=3
+            W=2
     ):
         super().__init__(
             in_channels=in_channels,
@@ -180,6 +227,9 @@ class Conv2d_Q(nn.Conv2d):
         # bin_input = self.activation_quantizer(input)
         tnn_bin_weight = self.weight_quantizer(self.weight)
         # print(bin_input)
+        if self.mask_flag:
+            tnn_bin_weight = tnn_bin_weight * self.mask
+
         # print(tnn_bin_weight[0][0][0][:])
         # 用量化后的A和W做卷积
         output = F.conv2d(
@@ -193,10 +243,11 @@ class Conv2d_Q(nn.Conv2d):
         return output
 
     def set_mask(self, mask):
-        self.mask = mask
-        self.weight.data = self.weight.data * self.mask.data
-        self.mask_flag = True
+        # self.mask = mask
+        self.weight_quantizer.set_mask(mask)  # set_atten_mask(mask)
+        # self.weight.data = self.weight.data * self.mask.data
+        # self.mask_flag = True
 
     def get_mask(self):
-        print(self.mask_flag)
-        return self.mask
+        print(self.weight_quantizer.mask_flag)
+        return self.weight_quantizer.atten_mask

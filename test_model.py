@@ -46,7 +46,7 @@ def PSNR(pred, gt, shave_border=0):
 opt = parser.parse_args([])
 
 opt.cuda = False
-opt.model =  "./models/0.5/full_db3_10_38.64.pth" #"CSNetPlus_model_t/model_epoch_435_17.98640433730782.pth" #
+opt.model = "./models/0.5/full_db3_10_38.64.pth" #"CSNetPlus_model_t/model_epoch_435_17.98640433730782.pth" #
 # opt.model = "CSNetPlus_model_t/0.2_denseBlock3*10.pth"#0.2_888.6.pth"#-1+1_noPurning_depthwise_0.2.pth"  #loss:600
 # opt.model = "saved_models/0.2/rrdb4_32.45.pth"
 subrate = 0.5
@@ -59,7 +59,7 @@ if cuda:
     if not torch.cuda.is_available():
             raise Exception("No GPU found or Wrong gpu id, please run without --cuda")
 
-model = torch.load(opt.model,map_location=torch.device('cpu'))["model"]
+model = torch.load(opt.model, map_location=torch.device('cpu'))["model"]
 model.eval()
 image_list = glob.glob("dataSet/Test/" + opt.dataset + "_mat/*.*") 
 
@@ -69,12 +69,12 @@ avg_ssim_val = 0.0
 
 pos = 0
 for image_name in image_list:
-    # pos += 1
-    # if pos != 1:
-    #     continue
+    pos += 1
+    if pos != 1:
+        continue
     print("Processing ", image_name)
     im_gt_y = sio.loadmat(image_name)['im_gt_y']
-
+    # print(im_gt_y.shape)
     im_gt_y = im_gt_y.astype(float)
     X = Variable(torch.from_numpy(im_gt_y).float()).view(1, -1, im_gt_y.shape[0], im_gt_y.shape[1])
     im_input = im_gt_y/255.
@@ -99,8 +99,17 @@ for image_name in image_list:
     image = res.cpu().clone()  # clone the tensor
     image = image.squeeze(0)  # remove the fake batch dimension
     image = unloader(image)
-    showimg(Image.fromarray(im_gt_y), image, subrate)
-
+    origin_image = Image.fromarray(im_gt_y)
+    origin_image = origin_image.convert('L')
+    image = image.convert("L")
+    # showimg(origin_image, image, subrate)
+    base_name = os.path.basename(image_name)
+    firstname, lastname = os.path.splitext(base_name)
+    # origin_image.save(fp=os.path.dirname(opt.model) + "/" + firstname + "_origin" + ".bmp", )
+    image.save(fp=os.path.dirname(opt.model) + "/" + firstname + "_full" + ".bmp", )
+    baby_eye_crop = (100, 130, 220, 250)
+    image.crop(baby_eye_crop).save(fp=os.path.dirname(opt.model) + "/" + firstname + "_crop" + ".bmp")
+    # origin_image.crop(baby_eye_crop).save(fp=os.path.dirname(opt.model) + "/" + firstname + "_org_crop" + ".bmp")
     res = res.cpu()
     im_res_y = res.data[0].numpy().astype(np.float32)
 
