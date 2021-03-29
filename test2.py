@@ -20,13 +20,15 @@ def showimg(img, fake_img, subrate=0.1):
     # fake_img = getimg("resImages/babytmpc22hn1_5.png")
     # plt.axis("off")
     # subrate = 0.2
-    img = img.convert('L')
+    # img = img.convert('L')
     plt.figure()
     plt.subplot(1, 2, 1)
-    plt.imshow(img, cmap='gray')
+    plt.imshow(img, )
+    # plt.imshow(img, cmap='gray')
     plt.subplot(1, 2, 2)
     # plt.axis('off')
-    plt.imshow(fake_img, cmap='gray')
+    plt.imshow(fake_img, )
+    # plt.imshow(fake_img, cmap='gray')
     # plt.savefig("result_images" + '/butterfly_{}.jpg'.format(subrate), bbox_inches='tight')
     # print("image saved as butterfly_{}.jpg".format(subrate))
     plt.show()
@@ -77,8 +79,8 @@ def image_in_model_test(data_path, model_path, crop_size=256, cuda=False, ):
     image_filenames = [join(data_path, x) for x in listdir(data_path) if is_image_file(x)]
     test_compose = Compose([
         # CenterCrop(crop_size),
-        Grayscale(),
-        # Resize((crop_size, crop_size)),
+        # Grayscale(),
+        Resize((crop_size, crop_size)),
         ToTensor(),
         # transforms.Normalize(mean=0.5, std=0.5)
     ])
@@ -93,7 +95,11 @@ def image_in_model_test(data_path, model_path, crop_size=256, cuda=False, ):
     total_elapsed_time = 0
     avg_psnr_predicted = 0
     avg_ssim_val = 0
+    # count = 0
     for image_name in image_filenames:
+        # count += 1
+        # if count != 5:
+        #     continue
         origin_image = Image.open(image_name)
         origin_image_tensor = test_compose(origin_image)
         x = origin_image_tensor.view(1, -1, origin_image_tensor.shape[1], origin_image_tensor.shape[2])
@@ -134,4 +140,4 @@ def image_in_model_test(data_path, model_path, crop_size=256, cuda=False, ):
 
 
 image_in_model_test('./dataSet/Test/Test5/',
-                    "./models/0.1/f_ten_db3_10_28.03.pth")
+                    "./models/0.2/rgb_full_0.2_.pth")

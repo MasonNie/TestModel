@@ -93,7 +93,7 @@ class csPart(nn.Module):
                                blocksize=blocksize)  # SELayer(channel=int(np.round(blocksize*blocksize*subrate*channel)), reduction=16)
         # self.sampling = nn.Conv2d(1, int(np.round(blocksize*blocksize*subrate)), blocksize, stride=blocksize, padding=0, bias=False)
         # init reconstruction
-        self.upsampling = nn.Conv2d(int(np.round(blocksize * blocksize * subrate * channel)), blocksize * blocksize, 1,
+        self.upsampling = nn.Conv2d(int(np.round(blocksize * blocksize * subrate * channel)), blocksize * blocksize*channel, 1,
                                     stride=1, padding=0)
         # self.upsampling = nn.Sequential(
         #     nn.Conv2d(int(np.round(blocksize*blocksize*subrate*channel)), blocksize*blocksize, 1, stride=1, padding=0, bias=True),
@@ -101,18 +101,22 @@ class csPart(nn.Module):
         # )
 
         self.dwc = nn.Sequential(
-            nn.Conv2d(in_channels=blocksize * blocksize,
-                      out_channels=blocksize * blocksize,
+            nn.Conv2d(in_channels=blocksize * blocksize*channel,
+                      out_channels=blocksize * blocksize*channel,
                       kernel_size=1, stride=1, padding=0,
                       groups=blocksize * blocksize),
             # nn.LeakyReLU(),
-            nn.Conv2d(in_channels=blocksize * blocksize, out_channels=blocksize * blocksize, kernel_size=1, padding=0),
+            nn.Conv2d(in_channels=blocksize * blocksize*channel, out_channels=blocksize * blocksize*channel, kernel_size=1, padding=0),
             # nn.LeakyReLU()
         )
         # self.activation = nn.LeakyReLU()
 
+    # from memory_profiler import profile
+    # @profile
     def forward(self, input):
+        # torch.save(input,"csInput.pth")
         x = self.sampling(input)
+        torch.save(x,  "csVector.pth")
         x = self.gamma * x + x
         atten_matrix = self.atten(x)
         x = self.upsampling(atten_matrix)
@@ -283,7 +287,7 @@ class CSNetPlus(nn.Module):
 
         self.baseblock_seq = nn.Sequential(*baseblock_layers)
 
-        self.out_conv = nn.Conv2d(outchannels, 1, kernel_size=(3, 3), stride=1, padding=1, bias=True)
+        self.out_conv = nn.Conv2d(outchannels, channels, kernel_size=(3, 3), stride=1, padding=1, bias=True)
 
     def forward(self, input):
         x = self.csPart(input)
